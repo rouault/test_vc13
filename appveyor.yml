@@ -1,0 +1,17 @@
+os: Visual Studio 2015
+platform:
+- x64
+- x86
+shallow_clone: true
+install:
+- if "%platform%" == "x86" call "%VS140COMNTOOLS%\..\..\VC\vcvarsall.bat"
+- if "%platform%" == "x64" "C:\Program Files\Microsoft SDKs\Windows\v7.1\Bin\SetEnv.cmd" /x64
+- if "%platform%" == "x64" call "%VS140COMNTOOLS%\..\..\VC\vcvarsall.bat" x86_amd64
+- if "%platform%" == "x64" SET PATH="C:\Program Files (x86)\Microsoft Visual Studio 14.0\VC\BIN\amd64";%PATH%
+- cl test.cpp
+build_script:
+- echo build_script
+test_script:
+- echo test_script
+- test.exe
+deploy: off

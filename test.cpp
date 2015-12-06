@@ -10,6 +10,7 @@ typedef unsigned long long GUIntBig;
 #endif
 #define CPLAssert assert
 #define HAVE_VSNPRINTF
+#define HAVE_SNPRINTF
 
 /************************************************************************/
 /*                  CPLvsnprintf_get_end_of_formatting()                */
@@ -283,10 +284,80 @@ int CPLsnprintf(char *str, size_t size, const char* fmt, ...)
     return ret;
 }
 
+static void TextFillR( char *pszTarget, unsigned int nMaxChars, 
+                       const char *pszSrc )
+
+{
+    if( strlen(pszSrc) < nMaxChars )
+    {
+        memset( pszTarget, ' ', nMaxChars - strlen(pszSrc) );
+        memcpy( pszTarget + nMaxChars - strlen(pszSrc), pszSrc, 
+                strlen(pszSrc) );
+    }
+    else
+        memcpy( pszTarget, pszSrc, nMaxChars );
+}
+
+/************************************************************************/
+/*                         USGSDEMPrintDouble()                         */
+/*                                                                      */
+/*      The MSVC C runtime library uses 3 digits                        */
+/*      for the exponent.  This causes various problems, so we try      */
+/*      to correct it here.                                             */
+/************************************************************************/
+
+#if defined(_MSC_VER) || defined(__MSVCRT__)
+#  define MSVC_HACK
+#endif
+
+static void USGSDEMPrintDouble( char *pszBuffer, double dfValue )
+
+{
+    if ( !pszBuffer )
+        return;
+
+#ifdef MSVC_HACK
+    const char *pszFormat = "%25.15e";
+#else
+    const char *pszFormat = "%24.15e";
+#endif
+
+    const int DOUBLE_BUFFER_SIZE = 64;
+    char szTemp[DOUBLE_BUFFER_SIZE];
+#if defined(HAVE_SNPRINTF)
+    CPLsnprintf( szTemp, DOUBLE_BUFFER_SIZE, pszFormat, dfValue );
+#else
+    CPLsprintf( szTemp, pszFormat, dfValue );
+#endif
+    szTemp[DOUBLE_BUFFER_SIZE - 1] = '\0';
+
+    for( int i = 0; szTemp[i] != '\0'; i++ )
+    {
+        if( szTemp[i] == 'E' || szTemp[i] == 'e' )
+            szTemp[i] = 'D';
+#ifdef MSVC_HACK
+        if( (szTemp[i] == '+' || szTemp[i] == '-')
+            && szTemp[i+1] == '0' && isdigit(szTemp[i+2]) 
+            && isdigit(szTemp[i+3]) && szTemp[i+4] == '\0' )
+        {
+            szTemp[i+1] = szTemp[i+2];
+            szTemp[i+2] = szTemp[i+3];
+            szTemp[i+3] = '\0';
+            break;
+        }
+#endif
+    }
+
+    TextFillR( pszBuffer, 24, szTemp );
+}
+
 int main()
 {
     char* szBuf = (char*)malloc(50);
-    printf("%d\n", CPLsnprintf(szBuf, 50, "%24.15e", -2.88e5));
+    //printf("%d\n", CPLsnprintf(szBuf, 50, "%24.15e", -2.88e5));
+    //printf("%s\n", szBuf);
+    memset(szBuf, 0, 50);
+    USGSDEMPrintDouble(szBuf, -2.88e5);
     printf("%s\n", szBuf);
     free(szBuf);
     return 0;

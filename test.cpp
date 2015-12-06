@@ -3,6 +3,7 @@
 #include <assert.h>
 #include <string.h>
 #include <stdlib.h>
+ #include <ctype.h>
 
 #if 0
 typedef long long GIntBig;
